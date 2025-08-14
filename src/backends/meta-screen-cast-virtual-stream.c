@@ -138,8 +138,22 @@ meta_screen_cast_virtual_stream_transform_coordinate (MetaEisViewport *viewport,
                                                       double          *out_x,
                                                       double          *out_y)
 {
-  *out_x = x;
-  *out_y = y;
+  MetaScreenCastVirtualStream *virtual_stream =
+    META_SCREEN_CAST_VIRTUAL_STREAM (viewport);
+  MetaScreenCastStream *stream = META_SCREEN_CAST_STREAM (virtual_stream);
+  MetaScreenCastStreamSrc *src = meta_screen_cast_stream_get_src (stream);
+  MetaScreenCastVirtualStreamSrc *virtual_src =
+    META_SCREEN_CAST_VIRTUAL_STREAM_SRC (src);
+  MetaLogicalMonitor *logical_monitor =
+    meta_screen_cast_virtual_stream_src_logical_monitor (virtual_src);
+  double scale = meta_logical_monitor_get_scale (logical_monitor);
+  MtkRectangle layout;
+
+  layout = meta_logical_monitor_get_layout (logical_monitor);
+
+  *out_x = (x - layout.x) * scale;
+  *out_y = (y - layout.y) * scale;
+
   return TRUE;
 }
 

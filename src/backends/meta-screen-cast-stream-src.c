@@ -863,6 +863,9 @@ maybe_schedule_follow_up_frame (MetaScreenCastStreamSrc *src,
                                                         src);
 }
 
+#include "backends/meta-screen-cast-virtual-stream-src.h"
+#include "backends/meta-logical-monitor-private.h"
+#include "backends/meta-virtual-monitor.h"
 static void
 maybe_add_damaged_regions_metadata (MetaScreenCastStreamSrc *src,
                                     struct spa_buffer       *spa_buffer)
@@ -870,6 +873,9 @@ maybe_add_damaged_regions_metadata (MetaScreenCastStreamSrc *src,
   MetaScreenCastStreamSrcPrivate *priv;
   struct spa_meta *spa_meta_video_damage;
   struct spa_meta_region *meta_region;
+  MetaLogicalMonitor *logical_monitor = NULL;
+  double scale = 1.0;
+  MtkRectangle layout = { 0, };
 
   spa_meta_video_damage =
     spa_buffer_find_meta (spa_buffer, SPA_META_VideoDamage);
@@ -877,6 +883,15 @@ maybe_add_damaged_regions_metadata (MetaScreenCastStreamSrc *src,
     return;
 
   priv = meta_screen_cast_stream_src_get_instance_private (src);
+  if (META_IS_SCREEN_CAST_VIRTUAL_STREAM_SRC (src))
+    {
+      MetaScreenCastVirtualStreamSrc *virtual_src =
+        META_SCREEN_CAST_VIRTUAL_STREAM_SRC (src);
+      logical_monitor =
+        meta_screen_cast_virtual_stream_src_logical_monitor (virtual_src);
+      scale = meta_logical_monitor_get_scale (logical_monitor);
+      layout = meta_logical_monitor_get_layout (logical_monitor);
+    }
   if (!priv->redraw_clip)
     {
       spa_meta_for_each (meta_region, spa_meta_video_damage)
@@ -921,8 +936,10 @@ maybe_add_damaged_regions_metadata (MetaScreenCastStreamSrc *src,
             MtkRectangle rect;
 
             rect = mtk_region_get_rectangle (priv->redraw_clip, i);
-            meta_region->region = SPA_REGION (rect.x, rect.y,
-                                              rect.width, rect.height);
+            meta_region->region = SPA_REGION ((rect.x - layout.x) * scale,
+                                              (rect.y - layout.y) * scale,
+                                              rect.width * scale,
+                                              rect.height * scale);
 
             if (++i == n_rectangles)
               break;
